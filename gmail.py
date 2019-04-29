@@ -4,8 +4,10 @@ import pyzmail
 import pprint
 import bs4
 import urllib
+import time
 
 from openpyxl import Workbook
+from openpyxl import load_workbook
 
 username = 'karthiek.umich@gmail.com'
 #password = input("enter password : ")
@@ -25,18 +27,67 @@ password = 'amgmercedesM1596.2'
 imapobj = imapclient.IMAPClient('imap.gmail.com', ssl=True)
 imapobj.login(username, password)
 
+start_time = time.time()
+
 imapobj.select_folder('INBOX', readonly=True)
-UIDs = imapobj.search(['BODY', 'twitter', 'ON', '07-Sep-2018', 'SUBJECT', 'Oliver'])
-print (UIDs)
-rawMessages = imapobj.fetch(39452, ['BODY.PEEK[HEADER]'])
-message = pyzmail.PyzMessage.factory(rawMessages[39452][b'BODY[HEADER]'])
-for line in (str(message).splitlines()):
-    if 'List-Unsubscribe: <' in line:
-        print (line)
-        break
+UIDs = imapobj.search(['SINCE', '01-Jan-2019', 'BEFORE', '01-May-2019'])
+print (str(len(UIDs)) + " emails recieved in this time frame")
+
+from_addresses = []
+subjects = []
+dates = []
+days = []
+months = []
+years = []
+times = []
+unsub_links = [None]*200
+
+
+for i in range(100):
+    raw_message = imapobj.fetch(UIDs[i], ['BODY.PEEK[HEADER]'])
+    message = pyzmail.PyzMessage.factory(raw_message[UIDs[i]][b'BODY[HEADER]'])
+    from_addresses.append(message.get_address('from'))
+    subjects.append(message.get_subject(''))
+    dates.append(message.get_decoded_header('date'))
+
+    for line in (str(message).splitlines()):
+        if 'List-Unsubscribe: <' in line:
+            unsub_links[i] = line
+            break
+
+
+
+
+end_time = time.time()
+print ("execution time : " + str((end_time-start_time)))
+
+
+imapobj.logout()
 
 
 wb = Workbook()
+ws = wb.active
+ws.title = "Data"
+ws.cell(1,1).value = "Date"
+ws.cell(1,2).value = "Month"
+ws.cell(1,3).value = "Year"
+ws.cell(1,4).value = "Day"
+ws.cell(1,5).value = "Time"
+ws.cell(1,6).value = "From (Sender)"
+ws.cell(1,7).value = "From (Email ID)"
+ws.cell(1,8).value = "Subject"
+ws.cell(1,9).value = "Unsubscribe Link"
+
+print(len(unsub_links))
+for i in range(100):
+    ws.cell(row=i+2, column=1).value = dates[i]
+   # ws.cell(row=i+2, column=2).value = months[i]
+   # ws.cell(row=i+2, column=3).value = years[i]
+   # ws.cell(row=i+2, column=4).value = days[i]
+   # ws.cell(row=i+2, column=5).value = times[i]
+    ws.cell(row = i+2, column = 6).value = from_addresses[i][0]
+    ws.cell(row = i+2, column = 7).value = from_addresses[i][1]
+    ws.cell(row = i+2, column = 8).value = str(subjects[i])
+    ws.cell(row=i+2, column=9).value = unsub_links[i]
 wb.save('Email_Analytics.xlsx')
 
-imapobj.logout()
