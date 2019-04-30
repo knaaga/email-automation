@@ -5,6 +5,7 @@ import pprint
 import bs4
 import urllib
 import time
+import datetime
 
 from openpyxl import Workbook
 from openpyxl import load_workbook
@@ -40,7 +41,7 @@ days = []
 months = []
 years = []
 times = []
-unsub_links = [None]*200
+unsub_links = [None]*20000
 
 
 for i in range(100):
@@ -48,12 +49,28 @@ for i in range(100):
     message = pyzmail.PyzMessage.factory(raw_message[UIDs[i]][b'BODY[HEADER]'])
     from_addresses.append(message.get_address('from'))
     subjects.append(message.get_subject(''))
-    dates.append(message.get_decoded_header('date'))
+    full_date = message.get_decoded_header('date')
+    
 
-    for line in (str(message).splitlines()):
-        if 'List-Unsubscribe: <' in line:
-            unsub_links[i] = line
-            break
+    if (',' in full_date):
+        days.append(full_date.split(', ')[0])
+        dates.append((full_date.split(', ')[1].split()[0]))
+        months.append((full_date.split(', ')[1].split()[1]))
+        years.append((full_date.split(', ')[1].split()[2]))
+        times.append((full_date.split(', ')[1].split()[3]))
+    else:
+        days.append('Unknown')
+        dates.append(full_date.split()[0])
+        months.append(full_date.split()[1])
+        years.append(full_date.split()[2])
+        times.append(full_date.split()[3])
+
+
+
+
+    unsub_links[i] = message.get_decoded_header('List-Unsubscribe')
+
+
 
 
 
@@ -80,11 +97,12 @@ ws.cell(1,9).value = "Unsubscribe Link"
 
 print(len(unsub_links))
 for i in range(100):
+
     ws.cell(row=i+2, column=1).value = dates[i]
-   # ws.cell(row=i+2, column=2).value = months[i]
-   # ws.cell(row=i+2, column=3).value = years[i]
-   # ws.cell(row=i+2, column=4).value = days[i]
-   # ws.cell(row=i+2, column=5).value = times[i]
+    ws.cell(row=i+2, column=2).value = months[i]
+    ws.cell(row=i+2, column=3).value = years[i]
+    ws.cell(row=i+2, column=4).value = days[i]
+    ws.cell(row=i+2, column=5).value = times[i]
     ws.cell(row = i+2, column = 6).value = from_addresses[i][0]
     ws.cell(row = i+2, column = 7).value = from_addresses[i][1]
     ws.cell(row = i+2, column = 8).value = str(subjects[i])
